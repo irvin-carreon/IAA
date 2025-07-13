@@ -1,0 +1,138 @@
+---
+title: 'Lab 7: Model Selection'
+author: "Irvin Carreon"
+date: "2025-07-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Use the same cars2010 dataset you have used in previous labs. Since we are using R for this lab, to obtain the data, you will need the AppliedPredicitveModeling package. Then, submit the following code:
+```{r}
+library(AppliedPredictiveModeling)
+data(FuelEconomy)
+library(dplyr)
+```
+
+This dataset has variables pertaining to the fuel economy of various cars. DO NOT create a training dataset since cars2010 will be used as the training data and cars2011 and cars2012 will be used at later time periods.
+
+Use the data to perform the following analyses:
+
+Build a regression model predicting the FE variable using all of the remaining variables. Some of these predictors are coded as numeric and should be considered categorical. The only numeric predictor is EngDispl. All remaining variables are categorical. Use forward selection with a 0.1 p-value selection criterion.
+
+```{r}
+cars2010$NumCyl <- as.factor(cars2010$NumCyl)
+cars2010$NumGears <- as.factor(cars2010$NumGears)
+cars2010$TransLockup <- as.factor(cars2010$TransLockup)
+cars2010$TransCreeperGear <- as.factor(cars2010$TransCreeperGear)
+cars2010$IntakeValvePerCyl <- as.factor(cars2010$IntakeValvePerCyl)
+cars2010$ExhaustValvesPerCyl <- as.factor(cars2010$ExhaustValvesPerCyl)
+cars2010$VarValveTiming <- as.factor(cars2010$VarValveTiming)
+cars2010$VarValveLift <- as.factor(cars2010$VarValveLift)
+```
+
+
+```{r}
+full_model <- lm(FE~., data=cars2010)
+empty_model <- lm(FE~1, data=cars2010)
+
+alpha_f <- 0.1
+forward_model <- step(empty_model,
+                      scope = list(lower=empty_model,
+                                   upper=full_model),
+                      direction = "forward",
+                      k=qchisq(alpha_f,1,lower.tail=FALSE))
+```
+Instead of the previous approach, now use stepwise selection using BIC criterion.
+```{r}
+full_model2 <- lm(FE~., data=cars2010)
+empty_model2 <- lm(FE~1, data=cars2010)
+
+step_model <- step(empty_model2,
+                   scope = list(lower=empty_model2, upper=full_model2),
+                   direction = "both",
+                   k=log(nrow(cars2010)))
+```
+We will now revisit the bike dataset. We want to build a couple of different models and see which one is better. We will learn in later lectures how to do this with test datasets, but for right now, we will only do this with training data. First, we need to split the data into training and test. Run the following code to get the training and test split.
+```{r}
+bike <- read.csv("https://raw.githubusercontent.com/IAA-Faculty/statistical_foundations/refs/heads/master/bike.csv")
+```
+
+```{r}
+set.seed(123)
+bike <- bike %>% mutate(id = row_number())
+train <- bike %>% sample_frac(0.7)
+test <- anti_join(bike, train, by = 'id')
+```
+
+How many observations are in the train & test dataset?
+
+```{r}
+nrow(train)
+nrow(test)
+```
+
+You want to build a model to predict the number of users (cnt). With all of the variables available to you it would be time consuming to go through by hand to do variable selection. Using the AIC criterion and the training dataset, do a forward selection on the training dataset with the following variables: feeling temperature (atemp), humidity (hum), season of the year (season) as a factor, year (yr) as a factor, hour of the day as a factor, holiday (holiday) as a factor, whether it is a working day (workingday) as a factor, the weather (weathersit) as a factor, and wind speed (windspeed)
+```{r}
+train$season <- as.factor(train$season)
+train$yr <- as.factor(train$yr)
+train$hr <- as.factor(train$hr)
+train$holiday <- as.factor(train$holiday)
+train$workingday <- as.factor(train$workingday)
+train$weathersit <- as.factor(train$weathersit)
+```
+
+```{r}
+full_model3 <- lm(cnt~atemp+hum+season+yr+hr+holiday+workingday+weathersit+windspeed, data=train)
+empty_model3 <- lm(cnt~1, data=train)
+
+forward_model2 <- step(empty_model3,
+                      scope = list(lower=empty_model3,
+                      upper=full_model3),
+                      direction = "forward", k=2)
+
+forward_model2
+```
+Now, using the same variables, do forward selection using BIC criterion. 
+```{r}
+full_model4 <- lm(cnt~atemp+hum+season+yr+hr+holiday+workingday+weathersit+windspeed, data=train)
+empty_model4 <- lm(cnt~1, data=train)
+
+forward_model3 <- step(empty_model4,
+                      scope = list(lower=empty_model4,
+                      upper=full_model4),
+                      direction = "forward", k=log(nrow(train)))
+
+forward_model3
+```
+Now, create a model with the same variables using backward selection using AIC criterion.
+
+```{r}
+full_model5 <- lm(cnt~atemp+hum+season+yr+hr+holiday+workingday+weathersit+windspeed, data=train)
+empty_model5 <- lm(cnt~1, data=train)
+
+backward_model <- step(full_model5,
+                      scope = list(lower=empty_model5,
+                      upper=full_model5),
+                      direction = "backward", k=2)
+
+backward_model
+
+```
+Now, create a model with the same variables using backward selection using BIC criterion.
+
+```{r}
+full_model6 <- lm(cnt~atemp+hum+season+yr+hr+holiday+workingday+weathersit+windspeed, data=train)
+empty_model6 <- lm(cnt~1, data=train)
+
+backward_model2 <- step(full_model6,
+                      scope = list(lower=empty_model6,
+                      upper=full_model6),
+                      direction = "backward", k=log(nrow(train)))
+
+backward_model2
+
+```
+
